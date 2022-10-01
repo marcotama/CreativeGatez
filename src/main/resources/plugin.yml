@@ -1,0 +1,7 @@
+name: CreativeGatez
+version: '0.1'
+main: org.tamasoft.creativegatez.CreativeGatez
+api-version: 1.19
+prefix: "[CreativeGatez]"
+authors: [ MT ]
+description: A plugin that allows you to create teleportation gates without running a single command
