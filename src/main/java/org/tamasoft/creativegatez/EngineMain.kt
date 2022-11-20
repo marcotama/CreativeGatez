@@ -40,7 +40,6 @@ class EngineMain : Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun stabilizePortalContent(event: BlockFromToEvent) {
-        if (!CreativeGatez.configuration.usingWater) return
         if (GatesCollector[event.block] == null && GatesCollector[event.toBlock] == null) return
         event.isCancelled = true
     }
