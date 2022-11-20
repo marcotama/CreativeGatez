@@ -40,27 +40,27 @@ object FloodUtil {
             return null
         }
 
-        val blocks: Set<Block>?
+        val portalBlocks: Set<Block>?
         if (blocksNSN != null) {
-            blocks = blocksNSN
+            portalBlocks = blocksNSN
             gateOrientation = GateOrientation.NS
         } else if (blocksNSS != null) {
-            blocks = blocksNSS
+            portalBlocks = blocksNSS
             gateOrientation = GateOrientation.NS
         } else if (blocksWEE != null) {
-            blocks = blocksWEE
+            portalBlocks = blocksWEE
             gateOrientation = GateOrientation.WE
         } else if (blocksWEW != null) {
-            blocks = blocksWEW
+            portalBlocks = blocksWEW
             gateOrientation = GateOrientation.WE
         } else {
             return null
         }
 
         // Add in the frame as well
-        val expandedBlocks = expandedByOne(blocks, gateOrientation.expandFaces)
-
-        return FloodInfo(gateOrientation, expandedBlocks)
+        val expandedBlocks = expandedByOne(portalBlocks, gateOrientation.expandFaces)
+        val frameBlocks = SetUtils.diff(expandedBlocks, portalBlocks)
+        return FloodInfo(gateOrientation, portalBlocks, frameBlocks)
     }
 
     /**
@@ -79,7 +79,11 @@ object FloodUtil {
         return ret
     }
 
-    class FloodInfo(var gateOrientation: GateOrientation, var blocks: Set<Block>)
+    class FloodInfo(
+        var gateOrientation: GateOrientation,
+        var portalBlocks: Set<Block>,
+        var frameBlocks: Set<Block>
+    )
 
     /**
      * Given a block, recursively walks void adjacent blocks and returns the set with all of them, or null if the area

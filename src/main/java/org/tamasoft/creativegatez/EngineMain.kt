@@ -22,6 +22,7 @@ import org.tamasoft.creativegatez.teleport.BlockLocation
 import org.tamasoft.creativegatez.teleport.Destination
 import org.tamasoft.creativegatez.teleport.Heading
 import org.tamasoft.creativegatez.util.*
+import java.util.stream.Collectors
 
 class EngineMain : Listener {
 
@@ -40,7 +41,7 @@ class EngineMain : Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun stabilizePortalContent(event: BlockFromToEvent) {
-        if (GatesCollector[event.block] == null && GatesCollector[event.toBlock] == null) return
+        if (GatesCollector.Portals[event.block] == null && GatesCollector.Portals[event.toBlock] == null) return
         event.isCancelled = true
     }
 
@@ -97,7 +98,7 @@ class EngineMain : Listener {
         if (LocationComparatorUtil.isSameBlock(event)) return
 
         // ... and there is a gate in the new block ...
-        val gate = GatesCollector[event.to]
+        val gate = GatesCollector.Portals[event.to]
         gate ?: return
 
         // ... and if the gate is intact ...
@@ -196,7 +197,7 @@ class EngineMain : Listener {
         }
 
         // ... then find the current gate ...
-        val currentGate: Gate? = GatesCollector[clickedBlock]
+        val currentGate: Gate? = GatesCollector.Frames[clickedBlock] ?: GatesCollector.Portals[clickedBlock]
         var message: String?
 
         // ... and if ...
@@ -233,13 +234,14 @@ class EngineMain : Listener {
                 return
             }
             val gateOrientation = gateFloodInfo.gateOrientation
-            val blocks = gateFloodInfo.blocks
+            val frameBlocks = gateFloodInfo.frameBlocks
+            val portalBlocks = gateFloodInfo.portalBlocks
 
             // ... ensure the required blocks are present ...
-            val materialCounts: Map<Material, Long> = MaterialCountUtil.count(blocks)
+            val materialCounts: Map<Material, Long> = MaterialCountUtil.count(frameBlocks)
             if (!MaterialCountUtil.has(materialCounts, CreativeGatez.configuration.blocksRequired)) {
                 val reqBlocks = MaterialCountUtil.desc(CreativeGatez.configuration.blocksRequired)
-                message = TxtUtil.parse("<b>The frame must contain $reqBlocks<b>.", )
+                message = TxtUtil.parse("<b>The frame must contain $reqBlocks<b>.")
                 player.sendMessage(message)
                 return
             }
@@ -247,18 +249,20 @@ class EngineMain : Listener {
             // ... calculate the exit location ...
             val world = player.world.name
             val playerLocation = BlockLocation.fromLocation(player.location)
-            val gateLocation = BlockLocation.fromBlock(blocks.iterator().next())
+            val gateLocation = BlockLocation.fromBlock(portalBlocks.iterator().next())
             val heading = Heading(0f, gateOrientation.getExitYaw(playerLocation, gateLocation))
             val exit = Destination(world, playerLocation, heading)
 
             // ... calculate the coords ...
-            val coords: MutableSet<BlockLocation> = HashSet()
-            for (block in blocks) {
-                coords.add(BlockLocation.fromBlock(block))
-            }
+            val frameCoords = frameBlocks.stream()
+                .map(BlockLocation::fromBlock)
+                .collect(Collectors.toSet())
+            val portalCoords = portalBlocks.stream()
+                .map(BlockLocation::fromBlock)
+                .collect(Collectors.toSet())
 
             // ... create the gate ...
-            val newGate = Gate(networkId, exit, coords, player.identity().uuid())
+            val newGate = Gate(networkId, exit, frameCoords, portalCoords, player.identity().uuid())
             GatesCollector.register(newGate)
 
             // ... set the air blocks to portal material ...
@@ -396,7 +400,7 @@ class EngineMain : Listener {
             for (dx in -radius..radius) {
                 for (dy in -radius..radius) {
                     for (dz in -radius..radius) {
-                        if (GatesCollector[block.getRelative(dx, dy, dz)] != null) return true
+                        if (GatesCollector.Portals[block.getRelative(dx, dy, dz)] != null) return true
                     }
                 }
             }
@@ -415,7 +419,7 @@ class EngineMain : Listener {
 
         fun stabilizePortalContentBlock(block: Block?, cancellable: Cancellable) {
             block ?: return
-            if (GatesCollector[block] == null) return
+            if (GatesCollector.Portals[block] == null) return
             cancellable.isCancelled = true
         }
         
@@ -427,7 +431,7 @@ class EngineMain : Listener {
 
         fun destroyGate(block: Block?) {
             block ?: return
-            val gate = GatesCollector[block] ?: return
+            val gate = GatesCollector.Frames[block] ?: return
             gate.destroy()
         }
     }

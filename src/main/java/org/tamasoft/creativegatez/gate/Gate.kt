@@ -30,10 +30,17 @@ class Gate() {
     var creationTimeMillis: Long = 0
     var id: Int = 0
 
-    constructor(networkId: String, exit: Destination, coords: Set<BlockLocation>, creatorId: UUID) : this() {
+    constructor(
+        networkId: String,
+        exit: Destination,
+        frameCoords: Set<BlockLocation>,
+        portalCoords: Set<BlockLocation>,
+        creatorId: UUID
+    ) : this() {
         this.networkId = networkId
         this.exit = exit
-        this.coords = coords
+        this.frameCoords = frameCoords
+        this.portalCoords = portalCoords
         this.creatorId = creatorId
         this.creationTimeMillis = System.currentTimeMillis()
     }
@@ -41,7 +48,7 @@ class Gate() {
 
     fun calcId() : Int {
         val builder = HashCodeBuilder()
-        coords.stream()
+        frameCoords.stream()
             .sorted(Comparator.comparingInt(BlockLocation::blockX)
                 .thenComparingInt(BlockLocation::blockY)
                 .thenComparingInt(BlockLocation::blockZ)
@@ -54,7 +61,15 @@ class Gate() {
     var restricted = false
     var enterEnabled = true
     var exitEnabled = true
-    var coords: Set<BlockLocation> = HashSet()
+    var frameCoords: Set<BlockLocation> = HashSet()
+        get() {
+            return Collections.unmodifiableSet(field)
+        }
+        set(coords) {
+            field = HashSet(coords)
+            id = calcId()
+        }
+    var portalCoords: Set<BlockLocation> = HashSet()
         get() {
             return Collections.unmodifiableSet(field)
         }
@@ -134,34 +149,45 @@ class Gate() {
     }
 
     // These blocks are sorted since the coords are sorted
-    val blocks: List<Block>?
+    val frameBlocks: List<Block>?
         @JsonIgnore
         get() {
-            val ret: MutableList<Block> = ArrayList()
-            val world: World = try {
-                exit.getBukkitWorld()
-            } catch (e: IllegalStateException) {
-                return null
-            }
-            for (coord in coords) {
-                val bx = coord.blockX
-                val by = coord.blockY
-                val bz = coord.blockZ
-                val block = world.getBlockAt(bx, by, bz)
-                ret.add(block)
-            }
-            return ret
+            return findBlocks(frameCoords)
         }
+
+    val portalBlocks: List<Block>?
+        @JsonIgnore
+        get() {
+            return findBlocks(portalCoords)
+        }
+
+    private fun findBlocks(coords: Set<BlockLocation>): MutableList<Block>? {
+        val ret: MutableList<Block> = ArrayList()
+        val world: World = try {
+            exit.getBukkitWorld()
+        } catch (e: IllegalStateException) {
+            return null
+        }
+        for (coord in coords) {
+            val bx = coord.blockX
+            val by = coord.blockY
+            val bz = coord.blockZ
+            val block = world.getBlockAt(bx, by, bz)
+            ret.add(block)
+        }
+        return ret
+    }
+
     val centerBlock: Block?
         @JsonIgnore
         get() {
-            val blocks = blocks ?: return null
+            val blocks = portalBlocks ?: return null
             return blocks[blocks.size / 2]
         }
     val isIntact: Boolean
         @JsonIgnore
         get() {
-            val blocks = blocks ?: return true
+            val blocks = frameBlocks ?: return true
             for (block in blocks) {
                 if (VoidUtil.isVoid(block)) {
                     return false
@@ -171,7 +197,7 @@ class Gate() {
         }
 
     fun setContent(material: Material) {
-        val blocks = blocks ?: return
+        val blocks = portalBlocks ?: return
         var axis: Axis = Axis.X
 
         // Orientation check

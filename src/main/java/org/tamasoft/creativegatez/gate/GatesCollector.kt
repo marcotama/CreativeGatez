@@ -6,40 +6,53 @@ import org.tamasoft.creativegatez.teleport.BlockLocation
 import org.tamasoft.creativegatez.util.JsonFileUtil
 import java.io.File
 import java.util.*
-import java.util.stream.Collectors
+import kotlin.collections.HashSet
 import kotlin.concurrent.thread
 
 object GatesCollector {
 
-    private val gates : MutableMap<BlockLocation, Gate> = LinkedHashMap()
+    val gates: MutableSet<Gate> = HashSet()
 
-    operator fun get(startBlock : Block): Gate? {
-        val blockLocation = BlockLocation.fromBlock(startBlock)
-        return gates[blockLocation]
+    open class LocationToGateMap {
+        private val map : MutableMap<BlockLocation, Gate> = LinkedHashMap()
+        operator fun get(startBlock : Block): Gate? {
+            val blockLocation = BlockLocation.fromBlock(startBlock)
+            return map[blockLocation]
+        }
+        operator fun get(location: Location): Gate? {
+            val blockLocation = BlockLocation.fromLocation(location)
+            return map[blockLocation]
+        }
+        operator fun set(location: BlockLocation, gate: Gate) {
+            map[location] = gate
+        }
+        fun remove(location: BlockLocation) {
+            map.remove(location)
+        }
     }
-    operator fun get(location: Location): Gate? {
-        val blockLocation = BlockLocation.fromLocation(location)
-        return gates[blockLocation]
-    }
+
+    object Frames : LocationToGateMap()
+    object Portals : LocationToGateMap()
 
     fun register(gate : Gate) {
-        gate.coords.forEach { gates[it] = gate }
-
+        gate.portalCoords.forEach { Frames[it] = gate }
+        gate.portalCoords.forEach { Portals[it] = gate }
+        gates.add(gate)
     }
 
     fun remove(gate: Gate) {
-        gate.coords.forEach { gates.remove(it) }
+        gate.portalCoords.forEach { Frames.remove(it) }
+        gate.portalCoords.forEach { Portals.remove(it) }
+        gates.remove(gate)
     }
 
     fun getUniqueGates(): List<Gate> {
-        return gates.values.stream()
-            .distinct()
-            .collect(Collectors.toList())
+        return gates.toList()
     }
 
     fun getByNetworkId(networkId: String): List<Gate> {
         val ret: MutableList<Gate> = ArrayList()
-        gates.values.stream()
+        gates.stream()
             .filter { g : Gate -> g.networkId == networkId }
             .distinct()
             .sorted(Comparator.comparingLong(Gate::creationTimeMillis))
