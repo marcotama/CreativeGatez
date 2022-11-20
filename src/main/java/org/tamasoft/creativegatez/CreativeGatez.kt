@@ -19,6 +19,7 @@ class CreativeGatez : JavaPlugin(), Listener {
     }
 
     companion object {
+        var instance: CreativeGatez? = null
         lateinit var configuration: Config
         private const val CONFIG_FILE_NAME = "config.json"
         private const val GATES_FILE_NAME = "gates.json"
@@ -29,6 +30,7 @@ class CreativeGatez : JavaPlugin(), Listener {
     val logger: Logger = Bukkit.getLogger()
 
     override fun onLoad() {
+        instance = this
         if (configFile.exists()) {
             configuration = JsonFileUtil.read(configFile, Config::class.java)
         } else {
