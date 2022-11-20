@@ -100,10 +100,8 @@ class Gate() {
         var message: String?
         for (gate in gateChain) {
             if (!gate!!.exitEnabled) continue
-            val network = GatesCollector.getByNetworkId(gate.networkId)
-            val destination = network[(network.indexOf(gate) + 1) % network.size]
             try {
-                TeleportUtil.teleport(player, destination.exit)
+                TeleportUtil.teleport(player, gate.exit)
                 fxKitUse()
                 return
             } catch (e: TeleporterException) {
