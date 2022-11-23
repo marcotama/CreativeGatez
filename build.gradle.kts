@@ -2,10 +2,10 @@ plugins {
     application
     java
     id("org.jetbrains.kotlin.jvm") version "1.7.20"
+    id("com.cinnober.gradle.semver-git") version "2.5.0"
 }
 
 group = "org.tamasoft"
-version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
