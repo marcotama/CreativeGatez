@@ -25,6 +25,7 @@ import kotlin.collections.ArrayList
 class Gate() {
 
     lateinit var networkId: String
+    lateinit var world: String
     lateinit var exit: Destination
     lateinit var creatorId: UUID
     var creationTimeMillis: Long = 0
@@ -32,12 +33,14 @@ class Gate() {
 
     constructor(
         networkId: String,
+        world: String,
         exit: Destination,
         frameCoords: Set<BlockLocation>,
         portalCoords: Set<BlockLocation>,
         creatorId: UUID
     ) : this() {
         this.networkId = networkId
+        this.world = world
         this.exit = exit
         this.frameCoords = frameCoords
         this.portalCoords = portalCoords

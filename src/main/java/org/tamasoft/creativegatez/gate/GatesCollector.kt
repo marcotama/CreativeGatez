@@ -31,18 +31,34 @@ object GatesCollector {
         }
     }
 
-    object Frames : LocationToGateMap()
-    object Portals : LocationToGateMap()
+    open class WorldToLocationToGateMap {
+        private val map : MutableMap<String, LocationToGateMap> = LinkedHashMap()
+        operator fun get(world : String): LocationToGateMap {
+            return map.computeIfAbsent(world) { LocationToGateMap() }
+        }
+        operator fun get(startBlock : Block): Gate? {
+            return this[startBlock.location]
+        }
+        operator fun get(location: Location): Gate? {
+            return map.computeIfAbsent(location.world.name) { LocationToGateMap() }[location]
+        }
+        operator fun set(world: String, gate: LocationToGateMap) {
+            map[world] = gate
+        }
+    }
+
+    object Frames : WorldToLocationToGateMap()
+    object Portals : WorldToLocationToGateMap()
 
     fun register(gate : Gate) {
-        gate.frameCoords.forEach { Frames[it] = gate }
-        gate.portalCoords.forEach { Portals[it] = gate }
+        gate.frameCoords.forEach { Frames[gate.world][it] = gate }
+        gate.portalCoords.forEach { Portals[gate.world][it] = gate }
         gates.add(gate)
     }
 
     fun remove(gate: Gate) {
-        gate.frameCoords.forEach { Frames.remove(it) }
-        gate.portalCoords.forEach { Portals.remove(it) }
+        gate.frameCoords.forEach { Frames[gate.world].remove(it) }
+        gate.portalCoords.forEach { Portals[gate.world].remove(it) }
         gates.remove(gate)
     }
 
