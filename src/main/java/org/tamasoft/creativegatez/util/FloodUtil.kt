@@ -41,9 +41,7 @@ object FloodUtil {
         val ret: MutableSet<Block> = HashSet(blocks)
         for (block in blocks) {
             for (face in expandFaces) {
-                val potentialBlock = block.getRelative(face)
-                if (ret.contains(potentialBlock)) continue
-                ret.add(potentialBlock)
+                ret.add(block.getRelative(face))
             }
         }
         return ret
