@@ -259,7 +259,7 @@ class EngineMain : Listener {
                 .collect(Collectors.toSet())
 
             // ... create the gate ...
-            val newGate = Gate(networkId, world, exit, frameCoords, portalCoords, player.identity().uuid())
+            val newGate = Gate(networkId, exit, frameCoords, portalCoords, player.identity().uuid())
             GatesCollector.register(newGate)
 
             // ... set the air blocks to portal material ...

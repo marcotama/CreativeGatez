@@ -63,14 +63,14 @@ object GatesCollector {
     object Portals : WorldToLocationToGateMap()
 
     fun register(gate : Gate) {
-        gate.frameCoords.forEach { Frames.add(gate.world, it, gate) }
-        gate.portalCoords.forEach { Portals[gate.world, it] = gate }
+        gate.frameCoords.forEach { Frames.add(gate.exit.world, it, gate) }
+        gate.portalCoords.forEach { Portals[gate.exit.world, it] = gate }
         gates.add(gate)
     }
 
     fun remove(gate: Gate) {
-        gate.frameCoords.forEach { Frames.remove(gate.world, it, gate) }
-        gate.portalCoords.forEach { Portals.remove(gate.world, it) }
+        gate.frameCoords.forEach { Frames.remove(gate.exit.world, it, gate) }
+        gate.portalCoords.forEach { Portals.remove(gate.exit.world, it) }
         gates.remove(gate)
     }
 
