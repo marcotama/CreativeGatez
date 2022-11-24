@@ -223,8 +223,7 @@ class EngineMain : Listener {
             val networkId = TxtUtil.stripColor(customNameTextComponent.content())
 
             // ... perform the flood fill ...
-            val startBlock = clickedBlock.getRelative(event.blockFace)
-            val gateFloodInfo: FloodUtil.FloodInfo? = FloodUtil.getGateFloodInfo(startBlock)
+            val gateFloodInfo: FloodUtil.FloodInfo? = FloodUtil.getGateFloodInfo(clickedBlock, event.blockFace)
             if (gateFloodInfo == null) {
                 message = TxtUtil.parse(
                     "<b>There is no frame for the gate, or it's too big.",

@@ -6,56 +6,26 @@ import org.tamasoft.creativegatez.CreativeGatez
 import org.tamasoft.creativegatez.gate.GateOrientation
 
 object FloodUtil {
+
+    val faceToOrientation = mapOf(
+        Pair(BlockFace.NORTH, GateOrientation.NS),
+        Pair(BlockFace.SOUTH, GateOrientation.NS),
+        Pair(BlockFace.EAST, GateOrientation.WE),
+        Pair(BlockFace.WEST, GateOrientation.WE),
+    )
+
     /**
      * Given a void block, finds the connected void blocks as well as a frame of non-void blocks surrounding it.
      * If the given block is non-void, returns null
      */
-    fun getGateFloodInfo(startBlock: Block): FloodInfo? {
-
-        // Search for content WE and NS
-        val gateOrientation: GateOrientation
-        var shiftedStartingBlock: Block = startBlock.getRelative(BlockFace.NORTH)
-        val blocksNSN = FloodCalculator(GateOrientation.NS, CreativeGatez.configuration.maxArea)
-            .calcFloodBlocks(shiftedStartingBlock)
+    fun getGateFloodInfo(clickedBlock: Block, clickedFace: BlockFace): FloodInfo? {
+        val startBlock = clickedBlock.getRelative(clickedFace)
+        val gateOrientation = faceToOrientation[clickedFace]
+            ?: return null
+        val portalBlocks = FloodCalculator(gateOrientation)
+            .calcFloodBlocks(startBlock)
             .getFoundBlocks()
-        shiftedStartingBlock = startBlock.getRelative(BlockFace.SOUTH)
-        val blocksNSS = FloodCalculator(GateOrientation.NS, CreativeGatez.configuration.maxArea)
-            .calcFloodBlocks(shiftedStartingBlock)
-            .getFoundBlocks()
-        shiftedStartingBlock = startBlock.getRelative(BlockFace.EAST)
-        val blocksWEE = FloodCalculator(GateOrientation.WE, CreativeGatez.configuration.maxArea)
-            .calcFloodBlocks(shiftedStartingBlock)
-            .getFoundBlocks()
-        shiftedStartingBlock = startBlock.getRelative(BlockFace.WEST)
-        val blocksWEW = FloodCalculator(GateOrientation.WE, CreativeGatez.configuration.maxArea)
-            .calcFloodBlocks(shiftedStartingBlock)
-            .getFoundBlocks()
-        
-        var found = 0
-        if (blocksNSN != null) found++
-        if (blocksNSS != null) found++
-        if (blocksWEE != null) found++
-        if (blocksWEW != null) found++
-        if (found != 1) {
-            return null
-        }
-
-        val portalBlocks: Set<Block>?
-        if (blocksNSN != null) {
-            portalBlocks = blocksNSN
-            gateOrientation = GateOrientation.NS
-        } else if (blocksNSS != null) {
-            portalBlocks = blocksNSS
-            gateOrientation = GateOrientation.NS
-        } else if (blocksWEE != null) {
-            portalBlocks = blocksWEE
-            gateOrientation = GateOrientation.WE
-        } else if (blocksWEW != null) {
-            portalBlocks = blocksWEW
-            gateOrientation = GateOrientation.WE
-        } else {
-            return null
-        }
+            ?: return null
 
         // Add in the frame as well
         val expandedBlocks = expandedByOne(portalBlocks, gateOrientation.expandFaces)
@@ -90,12 +60,11 @@ object FloodUtil {
      * is too large.
      */
     private class FloodCalculator(
-        orientation: GateOrientation,
-        maxArea: Int
+        orientation: GateOrientation
     ) {
         private val foundBlocks: MutableSet<Block> = HashSet()
         private val expandFaces: Set<BlockFace>
-        private val maxArea: Int
+        private val maxArea: Int = CreativeGatez.configuration.maxArea
         private var aborted = false
         fun getFoundBlocks(): Set<Block>? {
             return if (aborted || foundBlocks.isEmpty()) {
@@ -132,7 +101,6 @@ object FloodUtil {
 
         init {
             expandFaces = orientation.expandFaces
-            this.maxArea = maxArea
         }
     }
 }
