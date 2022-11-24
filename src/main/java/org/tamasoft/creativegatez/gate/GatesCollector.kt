@@ -5,60 +5,72 @@ import org.bukkit.block.Block
 import org.tamasoft.creativegatez.teleport.BlockLocation
 import org.tamasoft.creativegatez.util.JsonFileUtil
 import java.io.File
-import java.util.*
-import kotlin.collections.HashSet
 import kotlin.concurrent.thread
 
 object GatesCollector {
 
     val gates: MutableSet<Gate> = HashSet()
 
-    open class LocationToGateMap {
-        private val map : MutableMap<BlockLocation, Gate> = LinkedHashMap()
-        operator fun get(startBlock : Block): Gate? {
-            val blockLocation = BlockLocation.fromBlock(startBlock)
-            return map[blockLocation]
-        }
-        operator fun get(location: Location): Gate? {
-            val blockLocation = BlockLocation.fromLocation(location)
-            return map[blockLocation]
-        }
-        operator fun set(location: BlockLocation, gate: Gate) {
-            map[location] = gate
-        }
-        fun remove(location: BlockLocation) {
-            map.remove(location)
-        }
-    }
-
     open class WorldToLocationToGateMap {
-        private val map : MutableMap<String, LocationToGateMap> = LinkedHashMap()
-        operator fun get(world : String): LocationToGateMap {
-            return map.computeIfAbsent(world) { LocationToGateMap() }
+        private val map : MutableMap<String, MutableMap<BlockLocation, Gate>> = LinkedHashMap()
+        private operator fun get(world: String): MutableMap<BlockLocation, Gate> {
+            return map.computeIfAbsent(world) { LinkedHashMap() }
         }
         operator fun get(startBlock : Block): Gate? {
             return this[startBlock.location]
         }
         operator fun get(location: Location): Gate? {
-            return map.computeIfAbsent(location.world.name) { LocationToGateMap() }[location]
+            val world = location.world.name
+            val blockLocation = BlockLocation.fromLocation(location)
+            return this[world][blockLocation]
         }
-        operator fun set(world: String, gate: LocationToGateMap) {
-            map[world] = gate
+        operator fun set(world: String, location: BlockLocation, gate: Gate) {
+            this[world][location] = gate
+        }
+        fun remove(world: String, location: BlockLocation) {
+            this[world].remove(location)
         }
     }
 
-    object Frames : WorldToLocationToGateMap()
+    open class WorldToLocationToGatesMap {
+        private val map : MutableMap<String, MutableMap<BlockLocation, MutableSet<Gate>>> = LinkedHashMap()
+        operator fun get(startBlock : Block): MutableSet<Gate> {
+            return this[startBlock.location]
+        }
+        operator fun get(location: Location): MutableSet<Gate> {
+            return this[location.world.name, BlockLocation.fromLocation(location)]
+
+        }
+        private fun getRaw(world: String, location: BlockLocation): MutableSet<Gate> {
+            return map
+                .computeIfAbsent(world) { LinkedHashMap() }
+                .computeIfAbsent(location) { LinkedHashSet() }
+
+        }
+        operator fun get(world: String, location: BlockLocation): MutableSet<Gate> {
+            return getRaw(world, location).toMutableSet() // clone
+
+        }
+        fun add(world: String, location: BlockLocation, gate: Gate) {
+            getRaw(world, location).add(gate)
+        }
+        fun remove(world: String, location: BlockLocation, gate: Gate) {
+            getRaw(world, location).remove(gate)
+        }
+    }
+
+    object Frames : WorldToLocationToGatesMap()
     object Portals : WorldToLocationToGateMap()
 
     fun register(gate : Gate) {
-        gate.frameCoords.forEach { Frames[gate.world][it] = gate }
-        gate.portalCoords.forEach { Portals[gate.world][it] = gate }
+        gate.frameCoords.forEach { Frames.add(gate.world, it, gate) }
+        gate.portalCoords.forEach { Portals[gate.world, it] = gate }
         gates.add(gate)
     }
 
     fun remove(gate: Gate) {
-        gate.frameCoords.forEach { Frames[gate.world].remove(it) }
-        gate.portalCoords.forEach { Portals[gate.world].remove(it) }
+        gate.frameCoords.forEach { Frames.remove(gate.world, it, gate) }
+        gate.portalCoords.forEach { Portals.remove(gate.world, it) }
         gates.remove(gate)
     }
 

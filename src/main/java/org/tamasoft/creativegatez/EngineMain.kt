@@ -22,7 +22,9 @@ import org.tamasoft.creativegatez.teleport.BlockLocation
 import org.tamasoft.creativegatez.teleport.Destination
 import org.tamasoft.creativegatez.teleport.Heading
 import org.tamasoft.creativegatez.util.*
+import java.util.*
 import java.util.stream.Collectors
+import kotlin.collections.HashSet
 
 class EngineMain : Listener {
 
@@ -197,19 +199,15 @@ class EngineMain : Listener {
         }
 
         // ... then find the current gate ...
-        val currentGate: Gate? = GatesCollector.Frames[clickedBlock] ?: GatesCollector.Portals[clickedBlock]
+        val currentGates: MutableSet<Gate> = GatesCollector.Frames[clickedBlock]
+        if (currentGates.isEmpty()) {
+            Optional.ofNullable(GatesCollector.Portals[clickedBlock]).ifPresent(currentGates::add)
+        }
         var message: String?
 
         // ... and if ...
         if (material == CreativeGatez.configuration.materialCreate && event.action == Action.RIGHT_CLICK_BLOCK) {
             // ... we are trying to create ...
-
-            // ... check if the place is occupied ...
-            if (currentGate != null) {
-                message = TxtUtil.parse("<b>There is no room for a new gate since there already is one here.")
-                player.sendMessage(message)
-                return
-            }
 
             // ... check if the item is named ...
             val currentItemMeta = currentItem.itemMeta
@@ -311,7 +309,7 @@ class EngineMain : Listener {
             // ... we are trying to do something else that create ...
 
             // ... and there is a gate ...
-            if (currentGate == null) {
+            if (currentGates.isEmpty()) {
                 // ... and there is no gate ...
                 if (isGateNearby(clickedBlock)) {
                     // ... but there is portal nearby.
@@ -333,7 +331,7 @@ class EngineMain : Listener {
             // ... and we are not using water ...
             if (!CreativeGatez.configuration.usingWater) {
                 // ... update the portal orientation
-                currentGate.fill()
+                currentGates.forEach(Gate::fill)
             }
 
             // ... send use action description ...
@@ -343,52 +341,54 @@ class EngineMain : Listener {
             player.sendMessage(message)
 
             // ... check restriction ...
-            if (currentGate.restricted) {
-                if (currentGate.isCreator(player)) {
-                    message = TxtUtil.parse("<i>... the gate is restricted but you are the creator ...")
-                    player.sendMessage(message)
-                } else {
-                    message = TxtUtil.parse("<b>... the gate is restricted and you are not the creator.")
-                    player.sendMessage(message)
-                    return
+            for (currentGate in currentGates) {
+                if (currentGate.restricted) {
+                    if (currentGate.isCreator(player)) {
+                        message = TxtUtil.parse("<i>... the gate is restricted but you are the creator ...")
+                        player.sendMessage(message)
+                    } else {
+                        message = TxtUtil.parse("<b>... the gate is restricted and you are not the creator.")
+                        player.sendMessage(message)
+                        return
+                    }
                 }
-            }
-            if (material == CreativeGatez.configuration.materialInspect) {
-                // ... we are trying to inspect ...
-                message = TxtUtil.parse("<i>Some gate inscriptions are revealed:")
-                player.sendMessage(message)
-                message = TxtUtil.parse("<k>network: <v>$currentGate.networkId")
-                player.sendMessage(message)
-                message = TxtUtil.parse("<k>gates: <v>$currentGate.gateChain.size + 1")
-                player.sendMessage(message)
-            } else if (material == CreativeGatez.configuration.materialSecret) {
-                // ... we are trying to change secret state ...
-                val creator = currentGate.isCreator(player)
-                if (creator) {
-                    val secret: Boolean = !currentGate.restricted
-                    currentGate.restricted = secret
-                    message =
-                        if (secret) TxtUtil.parse("<h>Only you <i>can read the gate inscriptions now.") else TxtUtil.parse(
-                            "<h>Anyone <i>can read the gate inscriptions now."
+                if (material == CreativeGatez.configuration.materialInspect) {
+                    // ... we are trying to inspect ...
+                    message = TxtUtil.parse("<i>Some gate inscriptions are revealed:")
+                    player.sendMessage(message)
+                    message = TxtUtil.parse("<k>network: <v>$currentGate.networkId")
+                    player.sendMessage(message)
+                    message = TxtUtil.parse("<k>gates: <v>$currentGate.gateChain.size + 1")
+                    player.sendMessage(message)
+                } else if (material == CreativeGatez.configuration.materialSecret) {
+                    // ... we are trying to change secret state ...
+                    val creator = currentGate.isCreator(player)
+                    if (creator) {
+                        val secret: Boolean = !currentGate.restricted
+                        currentGate.restricted = secret
+                        message =
+                            if (secret) TxtUtil.parse("<h>Only you <i>can read the gate inscriptions now.") else TxtUtil.parse(
+                                "<h>Anyone <i>can read the gate inscriptions now."
+                            )
+                        player.sendMessage(message)
+                    } else {
+                        message = TxtUtil.parse(
+                            "<i>It seems <h>only the gate creator <i>can change inscription readability.",
+                            TxtUtil.getMaterialName(material),
+                            TxtUtil.getMaterialName(clickedBlock.type)
                         )
-                    player.sendMessage(message)
-                } else {
-                    message = TxtUtil.parse(
-                        "<i>It seems <h>only the gate creator <i>can change inscription readability.",
-                        TxtUtil.getMaterialName(material),
-                        TxtUtil.getMaterialName(clickedBlock.type)
-                    )
+                        player.sendMessage(message)
+                    }
+                } else if (material == CreativeGatez.configuration.materialMode) {
+                    // ... we are trying to change mode ...
+                    currentGate.toggleMode()
+                    val enter: String =
+                        if (currentGate.enterEnabled) TxtUtil.parse("<g>enter enabled") else TxtUtil.parse("<b>enter disabled")
+                    val exit: String =
+                        if (currentGate.exitEnabled) TxtUtil.parse("<g>exit enabled") else TxtUtil.parse("<b>exit disabled")
+                    message = TxtUtil.parse("<i>The gate now has $enter <i>and $exit<i>.")
                     player.sendMessage(message)
                 }
-            } else if (material == CreativeGatez.configuration.materialMode) {
-                // ... we are trying to change mode ...
-                currentGate.toggleMode()
-                val enter: String =
-                    if (currentGate.enterEnabled) TxtUtil.parse("<g>enter enabled") else TxtUtil.parse("<b>enter disabled")
-                val exit: String =
-                    if (currentGate.exitEnabled) TxtUtil.parse("<g>exit enabled") else TxtUtil.parse("<b>exit disabled")
-                message = TxtUtil.parse("<i>The gate now has $enter <i>and $exit<i>.")
-                player.sendMessage(message)
             }
         }
     }
@@ -430,8 +430,7 @@ class EngineMain : Listener {
 
         fun destroyGate(block: Block?) {
             block ?: return
-            val gate = GatesCollector.Frames[block] ?: return
-            gate.destroy()
+            GatesCollector.Frames[block].forEach(Gate::destroy)
         }
     }
 
