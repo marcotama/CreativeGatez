@@ -35,6 +35,7 @@ for filename in os.listdir(in_dir):
         coords_as_tuples = dicts_to_tuples(cgs_data['coords'])
         out_gate_data = {
             'id': None,
+            'world': cgs_data['exit']['w'], # assumption: the world is the same for entrance and exit
             'networkId': cgs_data['networkId'],
             'exit': {
                 'world': cgs_data['exit']['w'],
